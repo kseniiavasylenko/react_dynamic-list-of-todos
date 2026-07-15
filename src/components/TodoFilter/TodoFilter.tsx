@@ -1,8 +1,8 @@
 import React from 'react';
 
 type Props = {
-  status: 'all' | 'active' | 'completed';
-   query: string;
+  status: string; // Змінено для сумісності зі значенням select (або 'all' | 'active' | 'completed')
+  query: string;
   onStatusChange: (value: 'all' | 'active' | 'completed') => void;
   onQueryChange: (value: string) => void;
   onClearQuery: () => void;
@@ -43,7 +43,7 @@ export const TodoFilter: React.FC<Props> = ({
           type="text"
           className="input"
           placeholder="Search..."
-           value={query}
+          value={query}
           onChange={event => onQueryChange(event.target.value)}
         />
         <span className="icon is-left" style={{ pointerEvents: 'all' }}>
@@ -64,7 +64,7 @@ export const TodoFilter: React.FC<Props> = ({
               className="delete"
               style={{ visibility: 'hidden' }}
               aria-hidden
-            ></button>
+            />
           )}
         </span>
       </p>

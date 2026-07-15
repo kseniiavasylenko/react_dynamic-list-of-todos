@@ -8,16 +8,33 @@ import { TodoFilter } from './components/TodoFilter';
 import { TodoModal } from './components/TodoModal';
 import { Loader } from './components/Loader';
 import { Todo } from './types/Todo';
-import { getTodos } from './api';
-import { getUser } from './api';
+import { getTodos, getUser } from './api';
 import { User } from './types/User';
+
+// Выносим функцию фильтрации за пределы компонента.
+// Теперь она не пересоздается при каждом рендере и не ломает useMemo.
+const applyFilters = (list: Todo[], statusFilter: string, query: string) => {
+  let result = [...list];
+
+  if (statusFilter === 'active') {
+    result = result.filter(t => !t.completed);
+  } else if (statusFilter === 'completed') {
+    result = result.filter(t => t.completed);
+  }
+
+  const q = query.trim().toLowerCase();
+
+  if (q) {
+    result = result.filter(t => t.title.toLowerCase().includes(q));
+  }
+
+  return result;
+};
 
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loadingTodos, setLoadingTodos] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<
-  'all' | 'active' | 'completed'
-  >('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
@@ -42,27 +59,10 @@ export const App: React.FC = () => {
     load();
   }, []);
 
-  const applyFilters = (list: Todo[]) => {
-    let result = [...list];
-
-    if (statusFilter === 'active') {
-      result = result.filter(t => !t.completed);
-    } else if (statusFilter === 'completed') {
-      result = result.filter(t => t.completed);
-    }
-
-    const q = query.trim().toLowerCase();
-
-    if (q) {
-      result = result.filter(t => t.title.toLowerCase().includes(q));
-    }
-
-    return result;
-  };
-
+  // Теперь зависимости чистые, мемоизация работает корректно
   const visibleTodos = useMemo(
-    () => applyFilters(todos),
-    [todos, statusFilter, query, applyFilters],
+    () => applyFilters(todos, statusFilter, query),
+    [todos, statusFilter, query],
   );
 
   const handleStatusChange = (value: 'all' | 'active' | 'completed') => {
@@ -77,6 +77,7 @@ export const App: React.FC = () => {
     setQuery('');
   };
 
+  // Чистый и прямолинейный асинхронный обработчик без ложных "cleanup-функций"
   const handleShow = async (id: number) => {
     const todo = todos.find(t => t.id === id);
 
@@ -89,26 +90,16 @@ export const App: React.FC = () => {
     setModalVisible(true);
     setModalLoading(true);
 
-    let isActive = true;
-
     try {
       const user = await getUser(todo.userId);
 
-      if (isActive) {
-        setSelectedUser(user);
-      }
+      setSelectedUser(user);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
     } finally {
-      if (isActive) {
-        setModalLoading(false);
-      }
+      setModalLoading(false);
     }
-
-    return () => {
-      isActive = false;
-    };
   };
 
   const handleCloseModal = () => {
